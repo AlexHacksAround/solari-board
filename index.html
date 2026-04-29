@@ -128,7 +128,43 @@
     <div class="row" id="row2"></div>
   </div>
   <script>
-    /* JS goes here */
+    const CHAR_SET = ' ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,:/- ';
+    const COLS = 20;
+    const DEFAULTS = { background: '#2D327D', charbg: '#1E2260', char: '#FFFFFF' };
+
+    function getParams() {
+      const p = new URLSearchParams(location.search);
+      return {
+        line1:  normalise(p.get('line1') || ''),
+        line2:  normalise(p.get('line2') || ''),
+        background: validHex(p.get('background')) || DEFAULTS.background,
+        charbg:     validHex(p.get('charbg'))     || DEFAULTS.charbg,
+        char:       validHex(p.get('char'))        || DEFAULTS.char,
+      };
+    }
+
+    function normalise(text) {
+      return text
+        .toUpperCase()
+        .split('')
+        .map(c => CHAR_SET.includes(c) ? c : ' ')
+        .slice(0, COLS)
+        .join('')
+        .padEnd(COLS, ' ');
+    }
+
+    function validHex(val) {
+      if (!val) return null;
+      const v = val.startsWith('#') ? val : '#' + val;
+      return /^#[0-9A-Fa-f]{6}$/.test(v) ? v : null;
+    }
+
+    function applyColors(params) {
+      const root = document.documentElement.style;
+      root.setProperty('--bg',     params.background);
+      root.setProperty('--charbg', params.charbg);
+      root.setProperty('--char',   params.char);
+    }
   </script>
 </body>
 </html>
