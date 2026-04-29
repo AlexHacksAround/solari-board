@@ -198,13 +198,68 @@
       return tiles;
     }
 
+    function getNextChar(current) {
+      const idx = CHAR_SET.indexOf(current);
+      return CHAR_SET[(idx + 1) % CHAR_SET.length];
+    }
+
+    function flipToNext(tileObj, flipMs) {
+      return new Promise(resolve => {
+        const next = getNextChar(tileObj.current);
+
+        /*
+         * Real Solari mechanic:
+         * 1. Top half snaps immediately to show top of NEW char
+         * 2. Old bottom half rotates away (flip-out: 0→90deg from top edge)
+         * 3. New bottom half rotates in  (flip-in: -90→0deg from top edge)
+         */
+
+        // Step 1: snap top half to new char immediately
+        tileObj.top.textContent = next;
+
+        // Step 2: old bottom flips away
+        tileObj.bot.classList.add('tile-flip-out');
+        tileObj.bot.style.setProperty('--flip-ms', flipMs + 'ms');
+
+        // Step 3: new bottom half flips in, starts behind the tile
+        const newBot = document.createElement('div');
+        newBot.className = 'tile-bottom tile-half tile-flip-in';
+        newBot.style.setProperty('--flip-ms', flipMs + 'ms');
+        newBot.textContent = next;
+        tileObj.tile.appendChild(newBot);
+
+        // After animation completes, clean up and commit state
+        setTimeout(() => {
+          tileObj.bot.classList.remove('tile-flip-out');
+          tileObj.bot.textContent = next;
+          newBot.remove();
+          tileObj.current = next;
+          resolve();
+        }, flipMs + 16);  // +16ms buffer for browser frame scheduling
+      });
+    }
+
+    async function animateTile(tileObj, delay) {
+      await new Promise(r => setTimeout(r, delay));
+      while (tileObj.current !== tileObj.target) {
+        const flipMs = 80 + Math.random() * 60;  // 80–140ms
+        await flipToNext(tileObj, flipMs);
+      }
+    }
+
+    function startAnimation(allTiles) {
+      for (const t of allTiles) {
+        const delay = Math.random() * 800;  // 0–800ms
+        animateTile(t, delay);
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       const params = getParams();
       applyColors(params);
       const row1Tiles = buildRow(document.getElementById('row1'), params.line1);
       const row2Tiles = buildRow(document.getElementById('row2'), params.line2);
-      // animation called in Task 5
-      console.log('tiles built', row1Tiles.length, row2Tiles.length);
+      startAnimation([...row1Tiles, ...row2Tiles]);
     });
   </script>
 </body>
