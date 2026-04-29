@@ -9,7 +9,117 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@700&display=swap" rel="stylesheet" />
   <style>
-    /* CSS goes here */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #2D327D;
+      --charbg: #1E2260;
+      --char:   #FFFFFF;
+    }
+
+    body {
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 48px 24px;
+      font-family: 'Inter', sans-serif;
+    }
+
+    #board {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .row {
+      display: flex;
+      gap: 3px;
+    }
+
+    /* Wrap each tile in a perspective container so 3D transforms don't clip oddly */
+    .tile-wrapper {
+      perspective: 200px;
+      perspective-origin: center center;
+    }
+
+    .tile {
+      width: 48px;
+      height: 64px;
+      position: relative;
+      background: var(--charbg);
+      border-radius: 4px;
+      overflow: hidden;
+      transform-style: flat;
+    }
+
+    /* horizontal split gap — sits on top of everything */
+    .tile::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0;
+      top: calc(50% - 1px);
+      height: 2px;
+      background: var(--bg);
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    /* Each half clips to its own 50% of the tile */
+    .tile-half {
+      position: absolute;
+      left: 0; right: 0;
+      height: 32px;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      color: var(--char);
+      font-size: 28px;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+
+    /* Top half: shows upper portion of character */
+    .tile-top {
+      top: 0;
+      align-items: flex-end;
+    }
+
+    /* Bottom half: shows lower portion of character */
+    .tile-bottom {
+      top: 32px;
+      align-items: flex-start;
+    }
+
+    /*
+      Real Solari mechanic:
+      - Top half of NEW char appears instantly (no animation)
+      - Bottom half of OLD char rotates DOWN and away (flip-out)
+      - Bottom half of NEW char rotates DOWN into place (flip-in)
+      Both flip-out and flip-in pivot from the TOP edge of the bottom half.
+    */
+    .tile-flip-out {
+      transform-origin: top center;
+      animation: flip-out var(--flip-ms, 120ms) linear forwards;
+    }
+
+    .tile-flip-in {
+      transform-origin: top center;
+      animation: flip-in var(--flip-ms, 120ms) linear forwards;
+    }
+
+    @keyframes flip-out {
+      from { transform: rotateX(0deg); }
+      to   { transform: rotateX(90deg); }
+    }
+
+    @keyframes flip-in {
+      from { transform: rotateX(-90deg); }
+      to   { transform: rotateX(0deg); }
+    }
   </style>
 </head>
 <body>
