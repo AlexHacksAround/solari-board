@@ -165,6 +165,47 @@
       root.setProperty('--charbg', params.charbg);
       root.setProperty('--char',   params.char);
     }
+
+    function createTile(char) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'tile-wrapper';
+
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+
+      const top = document.createElement('div');
+      top.className = 'tile-top tile-half';
+      top.textContent = char;
+
+      const bot = document.createElement('div');
+      bot.className = 'tile-bottom tile-half';
+      bot.textContent = char;
+
+      tile.appendChild(top);
+      tile.appendChild(bot);
+      wrapper.appendChild(tile);
+      return { wrapper, tile, top, bot };
+    }
+
+    function buildRow(rowEl, text) {
+      rowEl.innerHTML = '';
+      const tiles = [];
+      for (const char of text) {
+        const t = createTile(' ');   // start blank
+        rowEl.appendChild(t.wrapper);
+        tiles.push({ ...t, target: char, current: ' ' });
+      }
+      return tiles;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const params = getParams();
+      applyColors(params);
+      const row1Tiles = buildRow(document.getElementById('row1'), params.line1);
+      const row2Tiles = buildRow(document.getElementById('row2'), params.line2);
+      // animation called in Task 5
+      console.log('tiles built', row1Tiles.length, row2Tiles.length);
+    });
   </script>
 </body>
 </html>
