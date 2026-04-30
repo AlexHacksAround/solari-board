@@ -66,32 +66,35 @@
       pointer-events: none;
     }
 
-    /* Each half clips to its own 50% of the tile */
+    /* Each half is a 32px clipping window on the full 64px character */
     .tile-half {
       position: absolute;
       left: 0; right: 0;
       height: 32px;
       overflow: hidden;
-      display: flex;
-      justify-content: center;
       color: var(--char);
       font-size: 28px;
       font-weight: 700;
       font-family: 'Inter', sans-serif;
+      text-align: center;
       backface-visibility: hidden;
       -webkit-backface-visibility: hidden;
     }
 
-    /* Top half: shows upper portion of character */
+    /* Top half: text rendered with line-height 64px so character centre = tile centre = bottom of this half */
     .tile-top {
       top: 0;
-      align-items: flex-end;
+      line-height: 64px;
     }
 
-    /* Bottom half: shows lower portion of character */
+    /* Bottom half: sits at tile midpoint, line-height 0 so text top aligns with split = lower half visible */
     .tile-bottom {
       top: 32px;
-      align-items: flex-start;
+      line-height: 0px;
+    }
+
+    .tile-bottom span, .tile-half.tile-bottom {
+      /* shift text up so it appears as lower continuation of tile-top */
     }
 
     /*
