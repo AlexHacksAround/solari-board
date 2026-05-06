@@ -133,16 +133,18 @@
   <script>
     const CHAR_SET = ' ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,:/- ';
     const COLS = 20;
-    const DEFAULTS = { background: '#2D327D', charbg: '#1E2260', char: '#FFFFFF' };
+    const DEFAULTS = { background: '#2D327D', charbg: '#1E2260', char: '#FFFFFF', speed: 1 };
 
     function getParams() {
       const p = new URLSearchParams(location.search);
+      const speed = parseFloat(p.get('speed'));
       return {
         line1:  normalise(p.get('line1') || ''),
         line2:  normalise(p.get('line2') || ''),
         background: validHex(p.get('background')) || DEFAULTS.background,
         charbg:     validHex(p.get('charbg'))     || DEFAULTS.charbg,
         char:       validHex(p.get('char'))        || DEFAULTS.char,
+        speed:      (isFinite(speed) && speed > 0) ? speed : DEFAULTS.speed,
       };
     }
 
@@ -242,18 +244,18 @@
       });
     }
 
-    async function animateTile(tileObj, delay) {
+    async function animateTile(tileObj, delay, speed) {
       await new Promise(r => setTimeout(r, delay));
       while (tileObj.current !== tileObj.target) {
-        const flipMs = 80 + Math.random() * 60;  // 80–140ms
+        const flipMs = (80 + Math.random() * 60) / speed;  // 80–140ms at speed=1
         await flipToNext(tileObj, flipMs);
       }
     }
 
-    function startAnimation(allTiles) {
+    function startAnimation(allTiles, speed) {
       for (const t of allTiles) {
-        const delay = Math.random() * 800;  // 0–800ms
-        animateTile(t, delay);
+        const delay = Math.random() * 800 / speed;  // 0–800ms at speed=1
+        animateTile(t, delay, speed);
       }
     }
 
@@ -262,7 +264,7 @@
       applyColors(params);
       const row1Tiles = buildRow(document.getElementById('row1'), params.line1);
       const row2Tiles = buildRow(document.getElementById('row2'), params.line2);
-      startAnimation([...row1Tiles, ...row2Tiles]);
+      startAnimation([...row1Tiles, ...row2Tiles], params.speed);
     });
   </script>
 </body>
