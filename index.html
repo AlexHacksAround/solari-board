@@ -150,24 +150,29 @@
   </style>
 </head>
 <body>
-  <div id="board">
-    <div class="row" id="row1"></div>
-    <div class="row" id="row2"></div>
-  </div>
+  <div id="board"></div>
   <button id="mute-btn" title="Toggle sound">
     <i class="bi bi-volume-mute-fill"></i>
   </button>
   <script>
     const CHAR_SET = ' ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,:/- ';
-    const COLS = 20;
-    const DEFAULTS = { background: '#2D327D', charbg: '#1E2260', char: '#FFFFFF', speed: 1 };
+    const DEFAULTS = { background: '#2D327D', charbg: '#1E2260', char: '#FFFFFF', speed: 1, cols: 20, rows: 2 };
 
     function getParams() {
       const p = new URLSearchParams(location.search);
       const speed = parseFloat(p.get('speed'));
+      const cols  = parseInt(p.get('cols'));
+      const rows  = parseInt(p.get('rows'));
+      const numRows = (Number.isInteger(rows) && rows > 0) ? rows : DEFAULTS.rows;
+      const numCols = (Number.isInteger(cols) && cols > 0) ? cols : DEFAULTS.cols;
+      const lines = [];
+      for (let i = 1; i <= numRows; i++) {
+        lines.push(normalise(p.get('line' + i) || '', numCols));
+      }
       return {
-        line1:  normalise(p.get('line1') || ''),
-        line2:  normalise(p.get('line2') || ''),
+        lines,
+        cols:       numCols,
+        rows:       numRows,
         background: validHex(p.get('background')) || DEFAULTS.background,
         charbg:     validHex(p.get('charbg'))     || DEFAULTS.charbg,
         char:       validHex(p.get('char'))        || DEFAULTS.char,
@@ -175,14 +180,14 @@
       };
     }
 
-    function normalise(text) {
+    function normalise(text, cols) {
       return text
         .toUpperCase()
         .split('')
         .map(c => CHAR_SET.includes(c) ? c : ' ')
-        .slice(0, COLS)
+        .slice(0, cols)
         .join('')
-        .padEnd(COLS, ' ');
+        .padEnd(cols, ' ');
     }
 
     function validHex(val) {
@@ -333,9 +338,15 @@
     document.addEventListener('DOMContentLoaded', () => {
       const params = getParams();
       applyColors(params);
-      const row1Tiles = buildRow(document.getElementById('row1'), params.line1);
-      const row2Tiles = buildRow(document.getElementById('row2'), params.line2);
-      startAnimation([...row1Tiles, ...row2Tiles], params.speed);
+      const board = document.getElementById('board');
+      const allTiles = [];
+      for (let i = 0; i < params.rows; i++) {
+        const rowEl = document.createElement('div');
+        rowEl.className = 'row';
+        board.appendChild(rowEl);
+        allTiles.push(...buildRow(rowEl, params.lines[i]));
+      }
+      startAnimation(allTiles, params.speed);
     });
   </script>
 </body>
