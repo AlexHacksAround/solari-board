@@ -31,7 +31,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      transform-origin: top center;
+      transform-origin: center center;
     }
 
     #board {
@@ -176,7 +176,7 @@
         hh:         posInt('hh'),
         mm:         posInt('mm'),
         ss:         posInt('ss'),
-        width:      (isFinite(width) && width >= 10 && width <= 100) ? width : DEFAULTS.width,
+        width:      isFinite(width) ? Math.min(100, Math.max(10, width)) : DEFAULTS.width,
         background: validHex(p.get('background')) || DEFAULTS.background,
         charbg:     validHex(p.get('charbg'))     || DEFAULTS.charbg,
         char:       validHex(p.get('char'))        || DEFAULTS.char,
