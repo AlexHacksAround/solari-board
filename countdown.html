@@ -10,20 +10,380 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
   <style>
-    /* CSS here */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #888888;
+      --charbg: #000000;
+      --char:   #FFFFFF;
+    }
+
+    body {
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Inter', sans-serif;
+    }
+
+    #scale-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform-origin: top center;
+    }
+
+    #board {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .tile-wrapper {
+      perspective: 200px;
+      perspective-origin: center center;
+    }
+
+    .tile {
+      width: 48px;
+      height: 64px;
+      position: relative;
+      background: var(--charbg);
+      border-radius: 4px;
+      overflow: hidden;
+      transform-style: flat;
+    }
+
+    .tile::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0;
+      top: calc(50% - 1px);
+      height: 2px;
+      background: var(--bg);
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .tile-half {
+      position: absolute;
+      left: 0; right: 0;
+      height: 32px;
+      overflow: hidden;
+      color: var(--char);
+      font-size: 28px;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      text-align: center;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+
+    .tile-top {
+      top: 0;
+      line-height: 64px;
+    }
+
+    .tile-bottom {
+      top: 32px;
+      line-height: 0px;
+    }
+
+    .tile-flip-out {
+      transform-origin: top center;
+      animation: flip-out var(--flip-ms, 120ms) linear forwards;
+    }
+
+    .tile-flip-in {
+      transform-origin: top center;
+      animation: flip-in var(--flip-ms, 120ms) linear forwards;
+    }
+
+    @keyframes flip-out {
+      from { transform: rotateX(0deg); }
+      to   { transform: rotateX(90deg); }
+    }
+
+    @keyframes flip-in {
+      from { transform: rotateX(-90deg); }
+      to   { transform: rotateX(0deg); }
+    }
+
+    .colon {
+      width: 24px;
+      height: 64px;
+      background: var(--charbg);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--char);
+      font-size: 28px;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .tile-wrapper.flash {
+      visibility: hidden;
+    }
+
+    #mute-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    #mute-btn:hover {
+      background: rgba(255,255,255,0.35);
+    }
   </style>
 </head>
 <body>
   <div id="scale-wrap">
-    <div id="board">
-      <!-- tiles injected by JS -->
-    </div>
+    <div id="board"></div>
   </div>
   <button id="mute-btn" title="Toggle sound">
     <i class="bi bi-volume-mute-fill"></i>
   </button>
   <script>
-    /* JS here */
+    const DEFAULTS = {
+      hh: 0, mm: 0, ss: 0,
+      width: 75,
+      background: '#888888', charbg: '#000000', char: '#FFFFFF'
+    };
+
+    function getParams() {
+      const p = new URLSearchParams(location.search);
+      function posInt(key) {
+        const v = parseInt(p.get(key));
+        return (Number.isInteger(v) && v >= 0) ? v : DEFAULTS[key];
+      }
+      const width = parseFloat(p.get('width'));
+      return {
+        hh:         posInt('hh'),
+        mm:         posInt('mm'),
+        ss:         posInt('ss'),
+        width:      (isFinite(width) && width >= 10 && width <= 100) ? width : DEFAULTS.width,
+        background: validHex(p.get('background')) || DEFAULTS.background,
+        charbg:     validHex(p.get('charbg'))     || DEFAULTS.charbg,
+        char:       validHex(p.get('char'))        || DEFAULTS.char,
+      };
+    }
+
+    function validHex(val) {
+      if (!val) return null;
+      const v = val.startsWith('#') ? val : '#' + val;
+      return /^#[0-9A-Fa-f]{6}$/.test(v) ? v : null;
+    }
+
+    function applyColors(params) {
+      const s = document.documentElement.style;
+      s.setProperty('--bg',     params.background);
+      s.setProperty('--charbg', params.charbg);
+      s.setProperty('--char',   params.char);
+    }
+
+    function splitDigits(totalSecs) {
+      const hh = Math.floor(totalSecs / 3600);
+      const mm = Math.floor((totalSecs % 3600) / 60);
+      const ss = totalSecs % 60;
+      return {
+        h1: Math.floor(hh / 10), h2: hh % 10,
+        m1: Math.floor(mm / 10), m2: mm % 10,
+        s1: Math.floor(ss / 10), s2: ss % 10,
+      };
+    }
+
+    function createDigitTile(digit) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'tile-wrapper';
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      const top = document.createElement('div');
+      top.className = 'tile-top tile-half';
+      top.textContent = digit;
+      const bot = document.createElement('div');
+      bot.className = 'tile-bottom tile-half';
+      bot.textContent = digit;
+      tile.appendChild(top);
+      tile.appendChild(bot);
+      wrapper.appendChild(tile);
+      return { wrapper, tile, top, bot, current: digit };
+    }
+
+    function createColon() {
+      const el = document.createElement('div');
+      el.className = 'colon';
+      el.textContent = ':';
+      return el;
+    }
+
+    function buildBoard(totalSeconds) {
+      const board = document.getElementById('board');
+      board.innerHTML = '';
+      const { h1, h2, m1, m2, s1, s2 } = splitDigits(totalSeconds);
+      const digits = [h1, h2, m1, m2, s1, s2];
+      const tiles = [];
+      digits.forEach((d, i) => {
+        const t = createDigitTile(String(d));
+        board.appendChild(t.wrapper);
+        tiles.push(t);
+        if (i === 1 || i === 3) board.appendChild(createColon());
+      });
+      return tiles;
+    }
+
+    const NATURAL_BOARD_WIDTH = 6 * 48 + 2 * 24 + 7 * 3; // 357px
+
+    function applyScale(widthPct) {
+      const factor = (window.innerWidth * widthPct / 100) / NATURAL_BOARD_WIDTH;
+      document.getElementById('scale-wrap').style.transform = `scale(${factor})`;
+    }
+
+    function flipTile(tileObj, nextChar, flipMs) {
+      return new Promise(resolve => {
+        tileObj.top.textContent = nextChar;
+        tileObj.bot.classList.add('tile-flip-out');
+        tileObj.bot.style.setProperty('--flip-ms', flipMs + 'ms');
+        const newBot = document.createElement('div');
+        newBot.className = 'tile-bottom tile-half tile-flip-in';
+        newBot.style.setProperty('--flip-ms', flipMs + 'ms');
+        newBot.textContent = nextChar;
+        tileObj.tile.appendChild(newBot);
+        setTimeout(() => {
+          tileObj.bot.classList.remove('tile-flip-out');
+          tileObj.bot.textContent = nextChar;
+          newBot.remove();
+          tileObj.current = nextChar;
+          resolve();
+        }, flipMs + 16);
+      });
+    }
+
+    const FLIP_MS = 120;
+
+    function updateDisplay(tiles, prevDigits, nextDigits) {
+      const keys = ['h1','h2','m1','m2','s1','s2'];
+      keys.forEach((key, i) => {
+        const next = String(nextDigits[key]);
+        if (next !== String(prevDigits[key])) {
+          playClick();
+          flipTile(tiles[i], next, FLIP_MS);
+        }
+      });
+    }
+
+    let audioCtx = null;
+    let muted = true;
+
+    function getAudioCtx() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      return audioCtx;
+    }
+
+    function playClick() {
+      if (muted) return;
+      const ctx = getAudioCtx();
+      const bufferSize = Math.floor(ctx.sampleRate * 0.012);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.35, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.012);
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.value = 1200;
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      source.start();
+    }
+
+    function playChime() {
+      if (muted) return;
+      const ctx = getAudioCtx();
+      [880, 440].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.value = freq;
+        osc.type = 'sine';
+        const start = ctx.currentTime + i * 0.35;
+        gain.gain.setValueAtTime(0.4, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.3);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + 0.35);
+      });
+    }
+
+    function triggerFinish(tiles) {
+      playChime();
+      let visible = true;
+      const flashInterval = setInterval(() => {
+        visible = !visible;
+        tiles.forEach(t => t.wrapper.classList.toggle('flash', !visible));
+      }, 500);
+      function dismiss() {
+        clearInterval(flashInterval);
+        tiles.forEach(t => t.wrapper.classList.remove('flash'));
+        document.removeEventListener('click', dismiss);
+      }
+      document.addEventListener('click', dismiss);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const params = getParams();
+      applyColors(params);
+
+      let remaining = params.hh * 3600 + params.mm * 60 + params.ss;
+      const tiles = buildBoard(remaining);
+
+      applyScale(params.width);
+      window.addEventListener('resize', () => applyScale(params.width));
+
+      const btn = document.getElementById('mute-btn');
+      const icon = btn.querySelector('i');
+      btn.addEventListener('click', () => {
+        muted = !muted;
+        icon.className = muted ? 'bi bi-volume-mute-fill' : 'bi bi-volume-up-fill';
+        if (!muted) getAudioCtx().resume();
+      });
+
+      if (remaining <= 0) {
+        triggerFinish(tiles);
+        return;
+      }
+
+      let prevDigits = splitDigits(remaining);
+
+      const interval = setInterval(() => {
+        remaining--;
+        const nextDigits = splitDigits(remaining);
+        updateDisplay(tiles, prevDigits, nextDigits);
+        prevDigits = nextDigits;
+        if (remaining <= 0) {
+          clearInterval(interval);
+          setTimeout(() => triggerFinish(tiles), FLIP_MS + 50);
+        }
+      }, 1000);
+    });
   </script>
 </body>
 </html>
